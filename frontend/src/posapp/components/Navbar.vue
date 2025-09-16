@@ -55,6 +55,7 @@
 					:is-dark="isDark"
 					@close-shift="openCloseShift"
 					@print-last-invoice="printLastInvoice"
+					@print-todays-report="printTodaysReport"
 					@sync-invoices="syncPendingInvoices"
 					@toggle-offline="toggleManualOffline"
 					@clear-cache="clearCache"
@@ -275,6 +276,9 @@ export default {
 		printLastInvoice() {
 			this.$emit("print-last-invoice");
 		},
+		printTodaysReport() {
+			this.$emit("print-todays-report");
+		},
 		syncPendingInvoices() {
 			this.$emit("sync-invoices");
 		},
@@ -364,6 +368,7 @@ export default {
 		"change-page",
 		"close-shift",
 		"print-last-invoice",
+		"print-todays-report",
 		"sync-invoices",
 		"toggle-offline",
 		"toggle-theme",

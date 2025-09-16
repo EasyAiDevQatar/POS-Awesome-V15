@@ -111,6 +111,7 @@
 
 <script>
 import format from "../../format";
+
 export default {
 	mixins: [format],
 	data: () => ({

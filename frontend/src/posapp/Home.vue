@@ -23,6 +23,7 @@
 				@nav-click="handleNavClick"
 				@close-shift="handleCloseShift"
 				@print-last-invoice="handlePrintLastInvoice"
+				@print-todays-report="handlePrintTodaysReport"
 				@sync-invoices="handleSyncInvoices"
 				@toggle-offline="handleToggleOffline"
 				@toggle-theme="handleToggleTheme"
@@ -353,6 +354,34 @@ export default {
 					},
 					{ once: true },
 				);
+			}
+		},
+
+		async handlePrintTodaysReport() {
+			try {
+				// Get the HTML report content
+				const response = await frappe.call({
+					method: "posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_todays_shifts_report",
+				});
+
+				if (response.message) {
+					// Create a new window with the report content
+					const printWindow = window.open("", "_blank");
+					printWindow.document.write(response.message);
+					printWindow.document.close();
+					printWindow.focus();
+					
+					// Wait for the content to load then print
+					printWindow.addEventListener("load", () => {
+						printWindow.print();
+					}, { once: true });
+				}
+			} catch (error) {
+				console.error("Error printing today's report:", error);
+				this.eventBus?.emit("show_message", {
+					title: "Error printing report",
+					color: "error",
+				});
 			}
 		},
 

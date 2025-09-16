@@ -121,9 +121,41 @@ export function usePosShift(openDialog) {
                         title: `POS Shift Closed`,
                         color: "success",
                     });
+                    
+                    // Automatically print today's report after closing shift
+                    print_todays_report();
+                    
                     check_opening_entry();
                 }
             });
+    }
+
+    async function print_todays_report() {
+        try {
+            // Get the HTML report content
+            const response = await frappe.call({
+                method: "posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_todays_shifts_report",
+            });
+
+            if (response.message) {
+                // Create a new window with the report content
+                const printWindow = window.open("", "_blank");
+                printWindow.document.write(response.message);
+                printWindow.document.close();
+                printWindow.focus();
+                
+                // Wait for the content to load then print
+                printWindow.addEventListener("load", () => {
+                    printWindow.print();
+                }, { once: true });
+            }
+        } catch (error) {
+            console.error("Error printing today's report:", error);
+            eventBus?.emit("show_message", {
+                title: `Error printing report`,
+                color: "error",
+            });
+        }
     }
 
     return { pos_profile, pos_opening_shift, check_opening_entry, get_closing_data, submit_closing_pos };

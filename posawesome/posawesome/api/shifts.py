@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import json
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import nowdate, flt
 from frappe import _
 from .utilities import get_version
 
@@ -58,6 +58,180 @@ def get_opening_dialog_data():
         )
 
     return data
+
+
+@frappe.whitelist()
+def get_todays_shifts_summary():
+    """Get summary of all opening shifts that happened today"""
+    from frappe.utils import today, getdate
+    
+    # Get all opening shifts that started today
+    opening_shifts = frappe.get_all(
+        "POS Opening Shift",
+        filters={
+            "period_start_date": ["between", [today() + " 00:00:00", today() + " 23:59:59"]],
+            "docstatus": 1
+        },
+        fields=[
+            "name", "user", "pos_profile", "company", 
+            "period_start_date", "period_end_date", "status"
+        ],
+        order_by="period_start_date desc"
+    )
+    
+    # Get company name from the first shift or default
+    company_name = "Company"
+    if opening_shifts:
+        company_name = frappe.get_cached_value("Company", opening_shifts[0].company, "company_name") or opening_shifts[0].company
+    
+    summary_data = {
+        "date": today(),
+        "total_shifts": len(opening_shifts),
+        "company_name": company_name,
+        "shifts": [],
+        "overall_totals": {
+            "grand_total": 0,
+            "net_total": 0,
+            "total_quantity": 0,
+            "total_transactions": 0
+        }
+    }
+    
+    # Get payment methods for all POS profiles
+    pos_profiles = list(set([shift.pos_profile for shift in opening_shifts]))
+    payment_methods = {}
+    for profile in pos_profiles:
+        payment_methods[profile] = frappe.get_all(
+            "POS Payment Method" if get_version() == 13 else "Sales Invoice Payment",
+            filters={"parent": profile},
+            fields=["mode_of_payment"],
+            pluck="mode_of_payment"
+        )
+    
+    # Get currency for each POS profile
+    currencies = {}
+    for profile in pos_profiles:
+        currencies[profile] = frappe.get_cached_value("POS Profile", profile, "currency")
+    
+    # Process each shift
+    for shift in opening_shifts:
+        shift_data = {
+            "shift_name": shift.name,
+            "user": shift.user,
+            "pos_profile": shift.pos_profile,
+            "company": shift.company,
+            "start_time": shift.period_start_date,
+            "end_time": shift.period_end_date,
+            "status": shift.status,
+            "currency": currencies.get(shift.pos_profile, "LYD"),
+            "totals": {
+                "grand_total": 0,
+                "net_total": 0,
+                "total_quantity": 0,
+                "total_transactions": 0
+            },
+            "payment_summary": {},
+            "taxes": []
+        }
+        
+        # Get invoices for this shift
+        use_pos_invoice = frappe.db.get_value(
+            "POS Profile", shift.pos_profile, "create_pos_invoice_instead_of_sales_invoice"
+        )
+        doctype = "POS Invoice" if use_pos_invoice else "Sales Invoice"
+        
+        invoices = frappe.get_all(
+            doctype,
+            filters={
+                "posa_pos_opening_shift": shift.name,
+                "docstatus": 1
+            },
+            fields=[
+                "name", "grand_total", "net_total", "total_qty", 
+                "posting_date", "customer"
+            ]
+        )
+        
+        # Process each invoice to get totals, payments, taxes, and items
+        shift_data["invoices"] = []
+        
+        for invoice in invoices:
+            # Calculate totals from basic invoice data
+            shift_data["totals"]["grand_total"] += flt(invoice.grand_total)
+            shift_data["totals"]["net_total"] += flt(invoice.net_total)
+            shift_data["totals"]["total_quantity"] += flt(invoice.total_qty)
+            shift_data["totals"]["total_transactions"] += 1
+            
+            # Load full invoice document to get payments, taxes, and items
+            invoice_doc = frappe.get_doc(doctype, invoice.name)
+            
+            # Create invoice summary with items
+            invoice_summary = {
+                "name": invoice.name,
+                "customer": invoice.customer,
+                "posting_date": invoice.posting_date,
+                "grand_total": flt(invoice.grand_total),
+                "net_total": flt(invoice.net_total),
+                "total_qty": flt(invoice.total_qty),
+                "invoice_items": [],
+                "payments": [],
+                "taxes": []
+            }
+            
+            # Get items
+            for item in invoice_doc.items:
+                invoice_summary["invoice_items"].append({
+                    "item_code": item.item_code,
+                    "item_name": item.item_name,
+                    "qty": flt(item.qty),
+                    "rate": flt(item.rate),
+                    "amount": flt(item.amount)
+                })
+            
+            # Get payments
+            for p in invoice_doc.payments:
+                invoice_summary["payments"].append({
+                    "mode_of_payment": p.mode_of_payment,
+                    "amount": flt(p.amount)
+                })
+                
+                # Also add to shift payment summary
+                if p.mode_of_payment in shift_data["payment_summary"]:
+                    shift_data["payment_summary"][p.mode_of_payment] += flt(p.amount)
+                else:
+                    shift_data["payment_summary"][p.mode_of_payment] = flt(p.amount)
+            
+            # Get taxes
+            for t in invoice_doc.taxes:
+                invoice_summary["taxes"].append({
+                    "account_head": t.account_head,
+                    "rate": t.rate,
+                    "tax_amount": flt(t.tax_amount)
+                })
+                
+                # Also add to shift tax summary
+                existing_tax = next((tax for tax in shift_data["taxes"] 
+                                   if tax["account_head"] == t.account_head and tax["rate"] == t.rate), None)
+                if existing_tax:
+                    existing_tax["amount"] += flt(t.tax_amount)
+                else:
+                    shift_data["taxes"].append({
+                        "account_head": t.account_head,
+                        "rate": t.rate,
+                        "amount": flt(t.tax_amount)
+                    })
+            
+            shift_data["invoices"].append(invoice_summary)
+        
+        # Add to overall totals
+        summary_data["overall_totals"]["grand_total"] += shift_data["totals"]["grand_total"]
+        summary_data["overall_totals"]["net_total"] += shift_data["totals"]["net_total"]
+        summary_data["overall_totals"]["total_quantity"] += shift_data["totals"]["total_quantity"]
+        summary_data["overall_totals"]["total_transactions"] += shift_data["totals"]["total_transactions"]
+        
+        summary_data["shifts"].append(shift_data)
+    
+    return summary_data
 
 
 @frappe.whitelist()

@@ -174,13 +174,30 @@ class POSClosingShift(Document):
 			for invoice in data:
 				frappe.delete_doc(doctype, invoice.name, force=1)
 
-	@frappe.whitelist()
-	def get_payment_reconciliation_details(self):
+@frappe.whitelist()
+def get_payment_reconciliation_details(self):
 		currency = frappe.get_cached_value("Company", self.company, "default_currency")
 		return frappe.render_template(
 			"posawesome/posawesome/doctype/pos_closing_shift/closing_shift_details.html",
 			{"data": self, "currency": currency},
 		)
+
+
+@frappe.whitelist()
+def get_todays_shifts_report():
+	"""Get HTML report for today's shifts summary"""
+	from posawesome.posawesome.api.shifts import get_todays_shifts_summary
+	
+	# Get today's shifts summary data
+	summary_data = get_todays_shifts_summary()
+	
+	# Render the HTML template
+	html_content = frappe.render_template(
+		"posawesome/posawesome/doctype/pos_closing_shift/todays_shifts_report.html",
+		{"data": summary_data},
+	)
+	
+	return html_content
 
 
 @frappe.whitelist()

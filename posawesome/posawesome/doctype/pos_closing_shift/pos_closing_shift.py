@@ -56,6 +56,8 @@ class POSClosingShift(Document):
 		opening_entry.save()
 		# link invoices with this closing shift so ERPNext can block edits
 		self._set_closing_entry_invoices()
+		# Generate and attach the shift report
+		self._generate_and_attach_shift_report()
 
 		if frappe.db.get_value(
 			"POS Profile",
@@ -174,13 +176,90 @@ class POSClosingShift(Document):
 			for invoice in data:
 				frappe.delete_doc(doctype, invoice.name, force=1)
 
+	def _generate_and_attach_shift_report(self):
+		"""Generate and attach the shift report as PDF to the closing shift document"""
+		try:
+			from frappe.utils.pdf import get_pdf
+			from frappe.utils.file_manager import save_file
+			import io
+			
+			# Get the shift report data
+			from posawesome.posawesome.api.shifts import get_todays_shifts_summary
+			summary_data = get_todays_shifts_summary()
+			
+			# Filter data for this specific shift only
+			shift_data = None
+			for shift in summary_data.get("shifts", []):
+				if shift.get("shift_name") == self.pos_opening_shift:
+					shift_data = shift
+					break
+			
+			if not shift_data:
+				frappe.log_error("Shift data not found for report generation", "POS Shift Report Error")
+				return
+			
+			# Create single shift data structure
+			single_shift_data = {
+				"date": summary_data.get("date"),
+				"company_name": summary_data.get("company_name"),
+				"total_shifts": 1,
+				"overall_totals": {
+					"grand_total": shift_data.get("totals", {}).get("grand_total", 0),
+					"net_total": shift_data.get("totals", {}).get("net_total", 0),
+					"total_quantity": shift_data.get("totals", {}).get("total_quantity", 0),
+					"total_transactions": shift_data.get("totals", {}).get("total_transactions", 0)
+				},
+				"shifts": [shift_data]
+			}
+			
+			# Generate HTML content
+			html_content = frappe.render_template(
+				"posawesome/posawesome/doctype/pos_closing_shift/todays_shifts_report.html",
+				{"data": single_shift_data},
+			)
+			
+			# Convert HTML to PDF
+			pdf_content = get_pdf(html_content)
+			
+			# Create filename
+			from frappe.utils import now_datetime
+			timestamp = now_datetime().strftime("%Y%m%d_%H%M%S")
+			filename = f"POS_Shift_Report_{self.pos_opening_shift}_{timestamp}.pdf"
+			
+			# Save as attachment
+			save_file(
+				fname=filename,
+				content=pdf_content,
+				dt="POS Closing Shift",
+				dn=self.name,
+				folder="Home/Attachments",
+				is_private=0
+			)
+			
+			frappe.msgprint(
+				_("Shift report has been generated and attached to this document."),
+				title=_("Report Generated"),
+				indicator="green"
+			)
+			
+		except Exception as e:
+			frappe.log_error(f"Error generating shift report: {str(e)}", "POS Shift Report Error")
+			frappe.msgprint(
+				_("Error generating shift report. Please check the error log."),
+				title=_("Report Generation Failed"),
+				indicator="red"
+			)
+
 @frappe.whitelist()
-def get_payment_reconciliation_details(self):
-		currency = frappe.get_cached_value("Company", self.company, "default_currency")
-		return frappe.render_template(
-			"posawesome/posawesome/doctype/pos_closing_shift/closing_shift_details.html",
-			{"data": self, "currency": currency},
-		)
+def get_payment_reconciliation_details(doc):
+	"""Get payment reconciliation details for a POS Closing Shift"""
+	import json
+	doc = json.loads(doc) if isinstance(doc, str) else doc
+	currency = frappe.get_cached_value("Company", doc.get("company"), "default_currency")
+	return frappe.render_template(
+		"posawesome/posawesome/doctype/pos_closing_shift/closing_shift_details.html",
+		{"data": doc, "currency": currency},
+	)
 
 
 @frappe.whitelist()

@@ -207,8 +207,10 @@ function refresh_fields(frm) {
 
 function set_html_data(frm) {
 	frappe.call({
-		method: "get_payment_reconciliation_details",
-		doc: frm.doc,
+		method: "posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_payment_reconciliation_details",
+		args: {
+			doc: frm.doc
+		},
 		callback: (r) => {
 			frm.get_field("payment_reconciliation_details").$wrapper.html(r.message);
 		},

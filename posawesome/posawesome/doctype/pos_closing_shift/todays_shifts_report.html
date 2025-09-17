@@ -201,6 +201,29 @@
             text-align: right;
             font-weight: bold;
         }
+        .customers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 9px;
+        }
+        .customers-table th, .customers-table td {
+            padding: 4px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .customers-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 9px;
+        }
+        .customers-table .amount, .customers-table .qty {
+            text-align: right;
+        }
+        .customers-table .amount {
+            font-weight: bold;
+        }
         .status-open {
             color: #4caf50;
             font-weight: bold;
@@ -282,77 +305,59 @@
                     </div>
                 </div>
 
-                {% if shift.invoices %}
-                <div class="invoices-section">
-                    <div class="section-title" style="font-size: 12px; margin-bottom: 8px;">{{ _("Invoices") }}</div>
-                    
-                    {% for invoice in shift.invoices %}
-                    <div class="invoice-card">
-                        <div class="invoice-header">
-                            {{ invoice.name }} - {{ invoice.customer or _("Walk-in Customer") }}
-                            <span style="float: right;">{{ frappe.utils.format_datetime(invoice.posting_date, "HH:mm") }}</span>
-                        </div>
-                        
-                        <div class="invoice-details">
-                            <div class="invoice-summary">
-                                <div class="summary-row">
-                                    <div class="summary-label">{{ _("Total:") }}</div>
-                                    <div class="summary-value">{{ frappe.utils.fmt_money(invoice.grand_total, currency=shift.currency) }}</div>
-                                </div>
-                                <div class="summary-row">
-                                    <div class="summary-label">{{ _("Items:") }}</div>
-                                    <div class="summary-value">{{ invoice.total_qty }}</div>
-                                </div>
-                                <div class="summary-row">
-                                    <div class="summary-label">{{ _("Net:") }}</div>
-                                    <div class="summary-value">{{ frappe.utils.fmt_money(invoice.net_total, currency=shift.currency) }}</div>
-                                </div>
-                            </div>
+                {% if shift.items_summary %}
+                <div class="items-section">
+                    <div class="section-title" style="font-size: 12px; margin-bottom: 8px;">{{ _("Items Sold") }}</div>
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>{{ _("Item Code") }}</th>
+                                <th>{{ _("Item Name") }}</th>
+                                <th class="qty">{{ _("Total Qty") }}</th>
+                                <th class="rate">{{ _("Avg Rate") }}</th>
+                                <th class="amount">{{ _("Total Amount") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in shift.items_summary %}
+                            <tr>
+                                <td>{{ item.item_code }}</td>
+                                <td>{{ item.item_name }}</td>
+                                <td class="qty">{{ item.qty }}</td>
+                                <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency=shift.currency) }}</td>
+                                <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency=shift.currency) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
 
-                            {% if invoice.invoice_items %}
-                            <table class="items-table">
-                                <thead>
-                                    <tr>
-                                        <th>{{ _("Item") }}</th>
-                                        <th class="qty">{{ _("Qty") }}</th>
-                                        <th class="rate">{{ _("Rate") }}</th>
-                                        <th class="amount">{{ _("Amount") }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in invoice.invoice_items %}
-                                    <tr>
-                                        <td>{{ item.item_name or item.item_code }}</td>
-                                        <td class="qty">{{ item.qty }}</td>
-                                        <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency=shift.currency) }}</td>
-                                        <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency=shift.currency) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                            {% endif %}
-
-                            {% if invoice.payments %}
-                            <table class="payments-table">
-                                <thead>
-                                    <tr>
-                                        <th>{{ _("Payment Method") }}</th>
-                                        <th class="amount">{{ _("Amount") }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for payment in invoice.payments %}
-                                    <tr>
-                                        <td>{{ payment.mode_of_payment }}</td>
-                                        <td class="amount">{{ frappe.utils.fmt_money(payment.amount, currency=shift.currency) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
+                {% if shift.customers_summary %}
+                <div class="customers-section">
+                    <div class="section-title" style="font-size: 12px; margin-bottom: 8px;">{{ _("Commercial Customers") }}</div>
+                    <table class="customers-table">
+                        <thead>
+                            <tr>
+                                <th>{{ _("Customer") }}</th>
+                                <th class="qty">{{ _("Transactions") }}</th>
+                                <th class="qty">{{ _("Total Qty") }}</th>
+                                <th class="amount">{{ _("Net Total") }}</th>
+                                <th class="amount">{{ _("Grand Total") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in shift.customers_summary %}
+                            <tr>
+                                <td>{{ customer.customer }}</td>
+                                <td class="qty">{{ customer.transactions }}</td>
+                                <td class="qty">{{ customer.total_qty }}</td>
+                                <td class="amount">{{ frappe.utils.fmt_money(customer.net_total, currency=shift.currency) }}</td>
+                                <td class="amount">{{ frappe.utils.fmt_money(customer.grand_total, currency=shift.currency) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
                 {% endif %}
 

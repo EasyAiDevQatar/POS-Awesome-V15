@@ -131,7 +131,9 @@ def get_todays_shifts_summary():
                 "total_transactions": 0
             },
             "payment_summary": {},
-            "taxes": []
+            "taxes": [],
+            "items_summary": {},  # Add items summary
+            "customers_summary": {}  # Add customers summary
         }
         
         # Get invoices for this shift
@@ -180,13 +182,28 @@ def get_todays_shifts_summary():
             
             # Get items
             for item in invoice_doc.items:
-                invoice_summary["invoice_items"].append({
+                item_data = {
                     "item_code": item.item_code,
                     "item_name": item.item_name,
                     "qty": flt(item.qty),
                     "rate": flt(item.rate),
                     "amount": flt(item.amount)
-                })
+                }
+                invoice_summary["invoice_items"].append(item_data)
+                
+                # Add to items summary
+                item_key = f"{item.item_code} - {item.item_name}"
+                if item_key in shift_data["items_summary"]:
+                    shift_data["items_summary"][item_key]["qty"] += flt(item.qty)
+                    shift_data["items_summary"][item_key]["amount"] += flt(item.amount)
+                else:
+                    shift_data["items_summary"][item_key] = {
+                        "item_code": item.item_code,
+                        "item_name": item.item_name,
+                        "qty": flt(item.qty),
+                        "rate": flt(item.rate),
+                        "amount": flt(item.amount)
+                    }
             
             # Get payments
             for p in invoice_doc.payments:
@@ -222,6 +239,30 @@ def get_todays_shifts_summary():
                     })
             
             shift_data["invoices"].append(invoice_summary)
+            
+            # Add to customers summary (only commercial customers)
+            customer = invoice.customer
+            if customer:  # Only if customer exists (not Walk-in Customer)
+                # Check if customer group is Commercial
+                customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
+                if customer_group == "Commercial":
+                    if customer in shift_data["customers_summary"]:
+                        shift_data["customers_summary"][customer]["grand_total"] += flt(invoice.grand_total)
+                        shift_data["customers_summary"][customer]["net_total"] += flt(invoice.net_total)
+                        shift_data["customers_summary"][customer]["total_qty"] += flt(invoice.total_qty)
+                        shift_data["customers_summary"][customer]["transactions"] += 1
+                    else:
+                        shift_data["customers_summary"][customer] = {
+                            "customer": customer,
+                            "grand_total": flt(invoice.grand_total),
+                            "net_total": flt(invoice.net_total),
+                            "total_qty": flt(invoice.total_qty),
+                            "transactions": 1
+                        }
+        
+        # Convert dictionaries to lists for template processing
+        shift_data["items_summary"] = list(shift_data["items_summary"].values())
+        shift_data["customers_summary"] = list(shift_data["customers_summary"].values())
         
         # Add to overall totals
         summary_data["overall_totals"]["grand_total"] += shift_data["totals"]["grand_total"]

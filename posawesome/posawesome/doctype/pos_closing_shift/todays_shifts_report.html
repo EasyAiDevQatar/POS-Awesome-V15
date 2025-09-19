@@ -328,6 +328,14 @@
                                 <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency=shift.currency) }}</td>
                             </tr>
                             {% endfor %}
+                            {% if shift.items_summary %}
+                            <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #1976d2;">
+                                <td colspan="2" style="text-align: center;">{{ _("TOTAL") }}</td>
+                                <td class="qty">{{ shift.totals.total_quantity }}</td>
+                                <td class="rate">-</td>
+                                <td class="amount">{{ frappe.utils.fmt_money(shift.totals.grand_total, currency=shift.currency) }}</td>
+                            </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -336,28 +344,79 @@
                 {% if shift.customers_summary %}
                 <div class="customers-section">
                     <div class="section-title" style="font-size: 12px; margin-bottom: 8px;">{{ _("Commercial Customers") }}</div>
-                    <table class="customers-table">
-                        <thead>
-                            <tr>
-                                <th>{{ _("Customer") }}</th>
-                                <th class="qty">{{ _("Transactions") }}</th>
-                                <th class="qty">{{ _("Total Qty") }}</th>
-                                <th class="amount">{{ _("Net Total") }}</th>
-                                <th class="amount">{{ _("Grand Total") }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for customer in shift.customers_summary %}
-                            <tr>
-                                <td>{{ customer.customer }}</td>
-                                <td class="qty">{{ customer.transactions }}</td>
-                                <td class="qty">{{ customer.total_qty }}</td>
-                                <td class="amount">{{ frappe.utils.fmt_money(customer.net_total, currency=shift.currency) }}</td>
-                                <td class="amount">{{ frappe.utils.fmt_money(customer.grand_total, currency=shift.currency) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    
+                    {% for customer in shift.customers_summary %}
+                    <div class="customer-card" style="border: 1px solid #ddd; border-radius: 3px; margin-bottom: 15px; overflow: hidden;">
+                        <div class="customer-header" style="background: #1976d2; color: white; padding: 8px; font-weight: bold; font-size: 12px;">
+                            {{ _("Customer") }}: {{ customer.customer }}
+                        </div>
+                        <div class="customer-details" style="padding: 8px;">
+                            {% if customer.transactions_list %}
+                            <div class="transactions-section" style="margin-bottom: 10px;">
+                                <div class="section-title" style="font-size: 10px; margin-bottom: 5px; color: #666;">{{ _("Transaction Details") }}</div>
+                                <table class="transactions-table" style="width: 100%; border-collapse: collapse; font-size: 8px;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa;">
+                                            <th style="padding: 3px; text-align: left; border-bottom: 1px solid #e0e0e0;">{{ _("Invoice") }}</th>
+                                            <th style="padding: 3px; text-align: left; border-bottom: 1px solid #e0e0e0;">{{ _("Date") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Qty") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Net Total") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Grand Total") }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in customer.transactions_list %}
+                                        <tr>
+                                            <td style="padding: 3px; border-bottom: 1px solid #e0e0e0;">{{ transaction.invoice_name }}</td>
+                                            <td style="padding: 3px; border-bottom: 1px solid #e0e0e0;">{{ frappe.utils.format_date(transaction.posting_date) }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ transaction.total_qty }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ frappe.utils.fmt_money(transaction.net_total, currency=shift.currency) }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0; font-weight: bold;">{{ frappe.utils.fmt_money(transaction.grand_total, currency=shift.currency) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                            
+                            {% if customer.items_summary %}
+                            <div class="customer-items-section">
+                                <div class="section-title" style="font-size: 10px; margin-bottom: 5px; color: #666;">{{ _("Items Sold to Customer") }}</div>
+                                <table class="customer-items-table" style="width: 100%; border-collapse: collapse; font-size: 8px;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa;">
+                                            <th style="padding: 3px; text-align: left; border-bottom: 1px solid #e0e0e0;">{{ _("Item Code") }}</th>
+                                            <th style="padding: 3px; text-align: left; border-bottom: 1px solid #e0e0e0;">{{ _("Item Name") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Total Qty") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Avg Rate") }}</th>
+                                            <th style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ _("Total Amount") }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in customer.items_summary %}
+                                        <tr>
+                                            <td style="padding: 3px; border-bottom: 1px solid #e0e0e0;">{{ item.item_code }}</td>
+                                            <td style="padding: 3px; border-bottom: 1px solid #e0e0e0;">{{ item.item_name }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ item.qty }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ frappe.utils.fmt_money(item.rate, currency=shift.currency) }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0; font-weight: bold;">{{ frappe.utils.fmt_money(item.amount, currency=shift.currency) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% if customer.items_summary %}
+                                        <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #1976d2;">
+                                            <td colspan="2" style="padding: 3px; text-align: center; border-bottom: 1px solid #e0e0e0;">{{ _("TOTAL") }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">{{ customer.total_qty }}</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0;">-</td>
+                                            <td style="padding: 3px; text-align: right; border-bottom: 1px solid #e0e0e0; font-weight: bold;">{{ frappe.utils.fmt_money(customer.grand_total, currency=shift.currency) }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
 

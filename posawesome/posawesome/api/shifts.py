@@ -94,7 +94,9 @@ def get_todays_shifts_summary():
             "net_total": 0,
             "total_quantity": 0,
             "total_transactions": 0
-        }
+        },
+        "overall_items_summary": {},
+        "overall_customers_summary": {}
     }
     
     # Get payment methods for all POS profiles
@@ -240,19 +242,19 @@ def get_todays_shifts_summary():
             
             shift_data["invoices"].append(invoice_summary)
             
-            # Add to customers summary (only commercial customers)
             customer = invoice.customer
-            if customer:  # Only if customer exists (not Walk-in Customer)
-                # Check if customer group is Commercial
+            if customer: 
+                # Check if customer group is Commercial or Individual
                 customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
-                if customer_group == "Commercial":
+                if customer_group in ["Commercial", "Individual"]:
                     if customer in shift_data["customers_summary"]:
                         shift_data["customers_summary"][customer]["grand_total"] += flt(invoice.grand_total)
                         shift_data["customers_summary"][customer]["net_total"] += flt(invoice.net_total)
                         shift_data["customers_summary"][customer]["total_qty"] += flt(invoice.total_qty)
                         shift_data["customers_summary"][customer]["transactions"] += 1
+                        if "customer_group" not in shift_data["customers_summary"][customer]:
+                            shift_data["customers_summary"][customer]["customer_group"] = customer_group
                         
-                        # Add transaction details
                         shift_data["customers_summary"][customer]["transactions_list"].append({
                             "invoice_name": invoice.name,
                             "posting_date": invoice.posting_date,
@@ -262,7 +264,6 @@ def get_todays_shifts_summary():
                             "items": invoice_summary["invoice_items"]
                         })
                         
-                        # Add items to customer's items summary
                         for item in invoice_summary["invoice_items"]:
                             item_key = f"{item['item_code']} - {item['item_name']}"
                             if item_key in shift_data["customers_summary"][customer]["items_summary"]:
@@ -279,6 +280,7 @@ def get_todays_shifts_summary():
                     else:
                         shift_data["customers_summary"][customer] = {
                             "customer": customer,
+                            "customer_group": customer_group,
                             "grand_total": flt(invoice.grand_total),
                             "net_total": flt(invoice.net_total),
                             "total_qty": flt(invoice.total_qty),
@@ -294,7 +296,6 @@ def get_todays_shifts_summary():
                             "items_summary": {}
                         }
                         
-                        # Add items to customer's items summary
                         for item in invoice_summary["invoice_items"]:
                             item_key = f"{item['item_code']} - {item['item_name']}"
                             shift_data["customers_summary"][customer]["items_summary"][item_key] = {
@@ -305,10 +306,8 @@ def get_todays_shifts_summary():
                                 "amount": flt(item["amount"])
                             }
         
-        # Convert dictionaries to lists for template processing
         shift_data["items_summary"] = list(shift_data["items_summary"].values())
         
-        # Convert customers summary and their items summary to lists
         for customer in shift_data["customers_summary"].values():
             customer["items_summary"] = list(customer["items_summary"].values())
         shift_data["customers_summary"] = list(shift_data["customers_summary"].values())
@@ -319,7 +318,74 @@ def get_todays_shifts_summary():
         summary_data["overall_totals"]["total_quantity"] += shift_data["totals"]["total_quantity"]
         summary_data["overall_totals"]["total_transactions"] += shift_data["totals"]["total_transactions"]
         
+        # Add to overall items summary
+        for item in shift_data["items_summary"]:
+            item_key = f"{item['item_code']} - {item['item_name']}"
+            if item_key in summary_data["overall_items_summary"]:
+                summary_data["overall_items_summary"][item_key]["qty"] += flt(item["qty"])
+                summary_data["overall_items_summary"][item_key]["amount"] += flt(item["amount"])
+            else:
+                summary_data["overall_items_summary"][item_key] = {
+                    "item_code": item["item_code"],
+                    "item_name": item["item_name"],
+                    "qty": flt(item["qty"]),
+                    "rate": flt(item["rate"]),
+                    "amount": flt(item["amount"])
+                }
+        
+        for customer in shift_data["customers_summary"]:
+            customer_key = customer["customer"]
+            if customer_key in summary_data["overall_customers_summary"]:
+                summary_data["overall_customers_summary"][customer_key]["grand_total"] += flt(customer["grand_total"])
+                summary_data["overall_customers_summary"][customer_key]["net_total"] += flt(customer["net_total"])
+                summary_data["overall_customers_summary"][customer_key]["total_qty"] += flt(customer["total_qty"])
+                summary_data["overall_customers_summary"][customer_key]["transactions"] += customer["transactions"]
+                
+                for transaction in customer.get("transactions_list", []):
+                    summary_data["overall_customers_summary"][customer_key]["transactions_list"].append(transaction)
+                
+                for item in customer.get("items_summary", []):
+                    item_key = f"{item['item_code']} - {item['item_name']}"
+                    if item_key in summary_data["overall_customers_summary"][customer_key]["items_summary"]:
+                        summary_data["overall_customers_summary"][customer_key]["items_summary"][item_key]["qty"] += flt(item["qty"])
+                        summary_data["overall_customers_summary"][customer_key]["items_summary"][item_key]["amount"] += flt(item["amount"])
+                    else:
+                        summary_data["overall_customers_summary"][customer_key]["items_summary"][item_key] = {
+                            "item_code": item["item_code"],
+                            "item_name": item["item_name"],
+                            "qty": flt(item["qty"]),
+                            "rate": flt(item["rate"]),
+                            "amount": flt(item["amount"])
+                        }
+            else:
+                summary_data["overall_customers_summary"][customer_key] = {
+                    "customer": customer["customer"],
+                    "customer_group": customer.get("customer_group", ""),
+                    "grand_total": flt(customer["grand_total"]),
+                    "net_total": flt(customer["net_total"]),
+                    "total_qty": flt(customer["total_qty"]),
+                    "transactions": customer["transactions"],
+                    "transactions_list": customer.get("transactions_list", []).copy(),
+                    "items_summary": {}
+                }
+                
+                for item in customer.get("items_summary", []):
+                    item_key = f"{item['item_code']} - {item['item_name']}"
+                    summary_data["overall_customers_summary"][customer_key]["items_summary"][item_key] = {
+                        "item_code": item["item_code"],
+                        "item_name": item["item_name"],
+                        "qty": flt(item["qty"]),
+                        "rate": flt(item["rate"]),
+                        "amount": flt(item["amount"])
+                    }
+        
         summary_data["shifts"].append(shift_data)
+    
+    summary_data["overall_items_summary"] = list(summary_data["overall_items_summary"].values())
+    
+    for customer in summary_data["overall_customers_summary"].values():
+        customer["items_summary"] = list(customer["items_summary"].values())
+    summary_data["overall_customers_summary"] = list(summary_data["overall_customers_summary"].values())
     
     return summary_data
 

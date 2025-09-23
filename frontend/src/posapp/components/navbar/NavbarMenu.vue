@@ -63,11 +63,11 @@
 						</div>
 					</template>
 					<div class="menu-content-compact">
-						<v-list-item-title class="menu-item-title-compact">{{
+						<!-- <v-list-item-title class="menu-item-title-compact">{{
 							__("Print Today's Report")
-						}}</v-list-item-title>
+						}}</v-list-item-title> -->
 						<v-list-item-subtitle class="menu-item-subtitle-compact">{{
-							__("Summary of all today's shifts")
+							__("Daily summary report")
 						}}</v-list-item-subtitle>
 					</div>
 				</v-list-item>

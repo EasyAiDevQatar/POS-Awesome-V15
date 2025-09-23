@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ _("Daily Summary Report") }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 15px;
+            color: #333;
+            background: white;
+            font-size: 12px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        .report-title {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .report-date {
+            font-size: 12px;
+            color: #888;
+        }
+        .summary-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+        .summary-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .summary-item {
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        .summary-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .summary-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 10px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 9px;
+        }
+        .items-table th, .items-table td {
+            padding: 4px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .items-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 9px;
+        }
+        .items-table .qty, .items-table .rate, .items-table .amount {
+            text-align: right;
+        }
+        .customer-card {
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .customer-header {
+            background: #1976d2;
+            color: white;
+            padding: 8px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .customer-details {
+            padding: 8px;
+        }
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8px;
+        }
+        .transactions-table th, .transactions-table td {
+            padding: 3px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .transactions-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 8px;
+        }
+        .transactions-table .qty, .transactions-table .net-total, .transactions-table .grand-total {
+            text-align: right;
+        }
+        .customer-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8px;
+        }
+        .customer-items-table th, .customer-items-table td {
+            padding: 3px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .customer-items-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 8px;
+        }
+        .customer-items-table .qty, .customer-items-table .rate, .customer-items-table .amount {
+            text-align: right;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 15px;
+        }
+        @media print {
+            body { margin: 10px; font-size: 11px; }
+            .customer-card { page-break-inside: avoid; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{ data.company_name }}</div>
+        <div class="report-title">{{ _("Daily Summary Report") }}</div>
+        <div class="report-date">{{ data.date }}</div>
+    </div>
+
+    <div class="summary-section">
+        <div class="summary-title">{{ _("Daily Summary") }}</div>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">{{ _("Total Shifts") }}</div>
+                <div class="summary-value">{{ data.total_shifts }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">{{ _("Total Sales") }}</div>
+                <div class="summary-value">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency="LYD") }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">{{ _("Total Transactions") }}</div>
+                <div class="summary-value">{{ data.overall_totals.total_transactions }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">{{ _("Total Items") }}</div>
+                <div class="summary-value">{{ data.overall_totals.total_quantity }}</div>
+            </div>
+        </div>
+        
+        {% if data.overall_items_summary %}
+        <div style="margin-top: 20px;">
+            <div class="section-title" style="font-size: 14px; margin-bottom: 10px; text-align: center;">{{ _("Overall Items Summary") }}</div>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>{{ _("Item Code") }}</th>
+                        <th>{{ _("Item Name") }}</th>
+                        <th class="qty">{{ _("Total Qty") }}</th>
+                        <th class="rate">{{ _("Avg Rate") }}</th>
+                        <th class="amount">{{ _("Total Amount") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data.overall_items_summary %}
+                    <tr>
+                        <td>{{ item.item_code }}</td>
+                        <td>{{ item.item_name }}</td>
+                        <td class="qty">{{ item.qty }}</td>
+                        <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency="LYD") }}</td>
+                        <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency="LYD") }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #1976d2;">
+                        <td colspan="2" style="text-align: center;">{{ _("TOTAL") }}</td>
+                        <td class="qty">{{ data.overall_totals.total_quantity }}</td>
+                        <td class="rate">-</td>
+                        <td class="amount">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency="LYD") }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if data.overall_customers_summary %}
+        <div style="margin-top: 20px;">
+            <div class="section-title" style="font-size: 14px; margin-bottom: 10px; text-align: center;">{{ _("Overall Customer Summary") }}</div>
+            
+            {% for customer in data.overall_customers_summary %}
+            <div class="customer-card">
+                <div class="customer-header">
+                    {{ _("Customer") }}: {{ customer.customer }}
+                    {% if customer.customer_group %}
+                    <span style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">
+                        {{ customer.customer_group }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="customer-details">
+                    {% if customer.transactions_list %}
+                    <div class="transactions-section" style="margin-bottom: 10px;">
+                        <div class="section-title" style="font-size: 10px; margin-bottom: 5px; color: #666;">{{ _("Transaction Details") }}</div>
+                        <table class="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ _("Invoice") }}</th>
+                                    <th>{{ _("Date") }}</th>
+                                    <th class="qty">{{ _("Qty") }}</th>
+                                    <th class="net-total">{{ _("Net Total") }}</th>
+                                    <th class="grand-total">{{ _("Grand Total") }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in customer.transactions_list %}
+                                <tr>
+                                    <td>{{ transaction.invoice_name }}</td>
+                                    <td>{{ frappe.utils.format_date(transaction.posting_date) }}</td>
+                                    <td class="qty">{{ transaction.total_qty }}</td>
+                                    <td class="net-total">{{ frappe.utils.fmt_money(transaction.net_total, currency="LYD") }}</td>
+                                    <td class="grand-total">{{ frappe.utils.fmt_money(transaction.grand_total, currency="LYD") }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                    
+                    {% if customer.items_summary %}
+                    <div class="customer-items-section">
+                        <div class="section-title" style="font-size: 10px; margin-bottom: 5px; color: #666;">{{ _("Items Sold to Customer") }}</div>
+                        <table class="customer-items-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ _("Item Code") }}</th>
+                                    <th>{{ _("Item Name") }}</th>
+                                    <th class="qty">{{ _("Total Qty") }}</th>
+                                    <th class="rate">{{ _("Avg Rate") }}</th>
+                                    <th class="amount">{{ _("Total Amount") }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in customer.items_summary %}
+                                <tr>
+                                    <td>{{ item.item_code }}</td>
+                                    <td>{{ item.item_name }}</td>
+                                    <td class="qty">{{ item.qty }}</td>
+                                    <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency="LYD") }}</td>
+                                    <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency="LYD") }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if customer.items_summary %}
+                                <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #1976d2;">
+                                    <td colspan="2" style="text-align: center;">{{ _("TOTAL") }}</td>
+                                    <td class="qty">{{ customer.total_qty }}</td>
+                                    <td class="rate">-</td>
+                                    <td class="amount">{{ frappe.utils.fmt_money(customer.grand_total, currency="LYD") }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <div>{{ _("Generated on") }}: {{ frappe.utils.format_datetime(frappe.utils.now(), "dd-MM-yyyy HH:mm") }}</div>
+        <div>{{ _("Report includes all sales from shifts that started on") }} {{ data.date }}</div>
+    </div>
+</body>
+</html>

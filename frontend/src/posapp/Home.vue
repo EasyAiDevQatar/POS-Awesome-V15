@@ -359,9 +359,9 @@ export default {
 
 		async handlePrintTodaysReport() {
 			try {
-				// Get the HTML report content
+				// Get the HTML report content for daily summary
 				const response = await frappe.call({
-					method: "posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_todays_shifts_report",
+					method: "posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_daily_summary_report",
 				});
 
 				if (response.message) {

@@ -65,12 +65,12 @@ def get_todays_shifts_summary():
     """Get summary of all opening shifts that happened today"""
     from frappe.utils import today, getdate
     
-    # Get all opening shifts that started today
+    # Get all opening shifts that are active today (started today OR started yesterday but still open)
     opening_shifts = frappe.get_all(
         "POS Opening Shift",
         filters={
-            "period_start_date": ["between", [today() + " 00:00:00", today() + " 23:59:59"]],
-            "docstatus": 1
+            "docstatus": 1,
+            "status": "Open"
         },
         fields=[
             "name", "user", "pos_profile", "company", 
@@ -79,15 +79,36 @@ def get_todays_shifts_summary():
         order_by="period_start_date desc"
     )
     
-    # Get company name from the first shift or default
+    # Filter to only include shifts that have transactions today
+    # or shifts that started today or are still active from yesterday
+    from frappe.utils import getdate, add_days
+    today_date = getdate(today())
+    yesterday_date = add_days(today_date, -1)
+    
+    filtered_shifts = []
+    for shift in opening_shifts:
+        shift_start_date = getdate(shift.period_start_date)
+        
+        # Include shift if:
+        # 1. It started today, OR
+        # 2. It started yesterday and is still open (overnight shift)
+        if shift_start_date == today_date or (shift_start_date == yesterday_date and shift.status == "Open"):
+            filtered_shifts.append(shift)
+    
+    opening_shifts = filtered_shifts
+    
+    # Get company name and currency from the first shift or default
     company_name = "Company"
+    company_currency = "QAR"  # Default fallback
     if opening_shifts:
         company_name = frappe.get_cached_value("Company", opening_shifts[0].company, "company_name") or opening_shifts[0].company
+        company_currency = frappe.get_cached_value("Company", opening_shifts[0].company, "default_currency") or "QAR"
     
     summary_data = {
         "date": today(),
         "total_shifts": len(opening_shifts),
         "company_name": company_name,
+        "company_currency": company_currency,
         "shifts": [],
         "overall_totals": {
             "grand_total": 0,
@@ -125,7 +146,7 @@ def get_todays_shifts_summary():
             "start_time": shift.period_start_date,
             "end_time": shift.period_end_date,
             "status": shift.status,
-            "currency": currencies.get(shift.pos_profile, "LYD"),
+            "currency": currencies.get(shift.pos_profile, company_currency),
             "totals": {
                 "grand_total": 0,
                 "net_total": 0,

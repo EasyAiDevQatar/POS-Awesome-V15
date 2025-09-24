@@ -181,7 +181,7 @@
             </div>
             <div class="summary-item">
                 <div class="summary-label">{{ _("Total Sales") }}</div>
-                <div class="summary-value">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency="LYD") }}</div>
+                <div class="summary-value">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency=data.company_currency) }}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">{{ _("Total Transactions") }}</div>
@@ -212,15 +212,15 @@
                         <td>{{ item.item_code }}</td>
                         <td>{{ item.item_name }}</td>
                         <td class="qty">{{ item.qty }}</td>
-                        <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency="LYD") }}</td>
-                        <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency="LYD") }}</td>
+                        <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency=data.company_currency) }}</td>
+                        <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency=data.company_currency) }}</td>
                     </tr>
                     {% endfor %}
                     <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #1976d2;">
                         <td colspan="2" style="text-align: center;">{{ _("TOTAL") }}</td>
                         <td class="qty">{{ data.overall_totals.total_quantity }}</td>
                         <td class="rate">-</td>
-                        <td class="amount">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency="LYD") }}</td>
+                        <td class="amount">{{ frappe.utils.fmt_money(data.overall_totals.grand_total, currency=data.company_currency) }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -261,8 +261,8 @@
                                     <td>{{ transaction.invoice_name }}</td>
                                     <td>{{ frappe.utils.format_date(transaction.posting_date) }}</td>
                                     <td class="qty">{{ transaction.total_qty }}</td>
-                                    <td class="net-total">{{ frappe.utils.fmt_money(transaction.net_total, currency="LYD") }}</td>
-                                    <td class="grand-total">{{ frappe.utils.fmt_money(transaction.grand_total, currency="LYD") }}</td>
+                                    <td class="net-total">{{ frappe.utils.fmt_money(transaction.net_total, currency=data.company_currency) }}</td>
+                                    <td class="grand-total">{{ frappe.utils.fmt_money(transaction.grand_total, currency=data.company_currency) }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -289,8 +289,8 @@
                                     <td>{{ item.item_code }}</td>
                                     <td>{{ item.item_name }}</td>
                                     <td class="qty">{{ item.qty }}</td>
-                                    <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency="LYD") }}</td>
-                                    <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency="LYD") }}</td>
+                                            <td class="rate">{{ frappe.utils.fmt_money(item.rate, currency=data.company_currency) }}</td>
+                                            <td class="amount">{{ frappe.utils.fmt_money(item.amount, currency=data.company_currency) }}</td>
                                 </tr>
                                 {% endfor %}
                                 {% if customer.items_summary %}
@@ -298,7 +298,7 @@
                                     <td colspan="2" style="text-align: center;">{{ _("TOTAL") }}</td>
                                     <td class="qty">{{ customer.total_qty }}</td>
                                     <td class="rate">-</td>
-                                    <td class="amount">{{ frappe.utils.fmt_money(customer.grand_total, currency="LYD") }}</td>
+                                    <td class="amount">{{ frappe.utils.fmt_money(customer.grand_total, currency=data.company_currency) }}</td>
                                 </tr>
                                 {% endif %}
                             </tbody>
